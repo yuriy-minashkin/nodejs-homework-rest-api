@@ -1,23 +1,48 @@
 const Contact = require("./schemas/contactSchema");
 
-const listContacts = async () => {
-  return Contact.find();
+const listContacts = async (owner, page, limit, favorite) => {
+  const skip = (page - 1) * limit;
+  const checkFavorite = {
+    ...(favorite === undefined ? { owner } : { owner, favorite }),
+  };
+
+  const contacts = await Contact.find(checkFavorite, "-createdAt -updatedAt", {
+    skip,
+    limit,
+  }).populate("owner", "_id email subscription");
+  return contacts;
 };
 
-const getContactById = (id) => {
-  return Contact.findOne({ _id: id });
+const getContactById = async (contactId) => {
+  const contactById = await Contact.findById(contactId);
+  return contactById;
 };
 
-const addContact = ({ name, email, phone }) => {
-  return Contact.create({ name, email, phone });
+const addContact = (body, owner) => {
+  return Contact.create({ ...body, owner });
 };
 
-const updateContact = (id, fields) => {
-  return Contact.findByIdAndUpdate({ _id: id }, fields, { new: true });
+const updateContact = async (contactId, body) => {
+  const updatedContact = await Contact.findByIdAndUpdate(
+    contactId,
+    { $set: { ...body } },
+    { new: true }
+  );
+  return updatedContact;
 };
 
-const removeContact = (id) => {
-  return Contact.findByIdAndRemove({ _id: id });
+const updateStatusContact = async (contactId, favorite) => {
+  const updatedStatus = await Contact.findByIdAndUpdate(
+    contactId,
+    { $set: { favorite } },
+    { new: true }
+  );
+  return updatedStatus;
+};
+
+const removeContact = async (contactId) => {
+  const contacts = await Contact.findByIdAndRemove(contactId);
+  return contacts;
 };
 
 module.exports = {
@@ -25,5 +50,6 @@ module.exports = {
   getContactById,
   addContact,
   updateContact,
+  updateStatusContact,
   removeContact,
 };
