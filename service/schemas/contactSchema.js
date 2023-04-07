@@ -3,6 +3,11 @@ const Schema = mongoose.Schema;
 
 const contactSchema = new Schema(
   {
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: "user",
+    },
+
     name: {
       type: String,
       required: [true, "Set name for contact"],
