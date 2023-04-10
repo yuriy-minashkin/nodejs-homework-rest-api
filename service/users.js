@@ -6,8 +6,8 @@ const findUserByEmail = async ({ email }) => {
   return user;
 };
 
-const register = async ({ email, password }) => {
-  const newUser = new User({ email, password });
+const register = async ({ email, avatarURL, password }) => {
+  const newUser = new User({ email, avatarURL, password });
   newUser.setPassword(password);
   await newUser.save();
   return newUser;
@@ -46,6 +46,11 @@ const updateSubscription = async (_id, subscription) => {
   return updatedStatus;
 };
 
+const updateAvatar = async (_id, avatarURL) => {
+  const updatedAvatar = await User.findByIdAndUpdate(_id, { avatarURL });
+  return updatedAvatar;
+};
+
 module.exports = {
   findUserByEmail,
   register,
@@ -53,4 +58,5 @@ module.exports = {
   createToken,
   logout,
   updateSubscription,
+  updateAvatar,
 };
