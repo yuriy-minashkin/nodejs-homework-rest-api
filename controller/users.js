@@ -1,17 +1,23 @@
+const gravatar = require("gravatar");
+const path = require("path");
+const fs = require("fs/promises");
+const Jimp = require("jimp");
 const service = require("../service/users");
 
 const registerUser = async (req, res, next) => {
   const { email, password, subscription = "starter" } = req.body;
+  const avatarURL = gravatar.url(email);
   const user = await service.findUserByEmail({ email });
   if (user) {
     res.status(409).json({ message: "Email in use" });
     return;
   }
-  await service.register({ email, password });
+  await service.register({ email, password, avatarURL });
   res.status(201).json({
     user: {
       email,
       subscription,
+      avatarURL,
     },
   });
 };
@@ -19,7 +25,6 @@ const registerUser = async (req, res, next) => {
 const loginUser = async (req, res, next) => {
   const { email, password } = req.body;
   const user = await service.findUserByEmail({ email });
-  console.log(req.user);
   if (!user || !user.validPassword(password)) {
     res.status(401).json({ message: "Email or password is wrong" });
   }
@@ -36,8 +41,8 @@ const loginUser = async (req, res, next) => {
 };
 
 const getCurrentUser = async (req, res) => {
-  const { email, subscription } = req.user;
-  res.json({ email, subscription });
+  const { email, subscription, avatarURL } = req.user;
+  res.json({ email, subscription, avatarURL });
 };
 
 const updateUser = async (req, res, next) => {
@@ -63,10 +68,38 @@ const logoutUser = async (req, res) => {
   res.status(204).json();
 };
 
+const avatarsDir = path.join(__dirname, "../", "public", "avatars");
+
+const updateUserAvatar = async (req, res) => {
+  const { path: tempUpload, originalname } = req.file;
+  console.log(req.file);
+  const { _id } = req.user;
+  const imgName = `${_id}_${originalname}`;
+
+  try {
+    const resultUpload = path.join(avatarsDir, imgName);
+    console.log(resultUpload);
+    const originalAvatar = await Jimp.read(tempUpload);
+    originalAvatar.resize(250, 250).write(tempUpload);
+
+    await fs.rename(tempUpload, resultUpload);
+
+    const avatarURL = path.join("avatars", imgName);
+
+    await service.updateAvatar(_id, avatarURL);
+    res.json({ avatarURL });
+  } catch (error) {
+    await fs.unlink(tempUpload);
+
+    throw error;
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   getCurrentUser,
   updateUser,
   logoutUser,
+  updateUserAvatar,
 };
