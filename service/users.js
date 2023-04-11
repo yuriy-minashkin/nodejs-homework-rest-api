@@ -1,13 +1,13 @@
 const { User } = require("../service/schemas/userSchema");
 const jwt = require("jsonwebtoken");
 
-const findUserByEmail = async ({ email }) => {
-  const user = await User.findOne({ email });
+const findUserByEmail = async (data) => {
+  const user = await User.findOne(data);
   return user;
 };
 
-const register = async ({ email, avatarURL, password }) => {
-  const newUser = new User({ email, avatarURL, password });
+const register = async ({ email, avatarURL, password, verificationToken }) => {
+  const newUser = new User({ email, avatarURL, password, verificationToken });
   newUser.setPassword(password);
   await newUser.save();
   return newUser;
@@ -51,6 +51,10 @@ const updateAvatar = async (_id, avatarURL) => {
   return updatedAvatar;
 };
 
+const verifyUser = async (_id) => {
+  await User.findByIdAndUpdate(_id, { verify: true, verificationToken: null });
+};
+
 module.exports = {
   findUserByEmail,
   register,
@@ -59,4 +63,5 @@ module.exports = {
   logout,
   updateSubscription,
   updateAvatar,
+  verifyUser,
 };
