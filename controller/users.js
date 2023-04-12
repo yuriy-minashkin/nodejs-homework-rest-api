@@ -3,16 +3,20 @@ const path = require("path");
 const fs = require("fs/promises");
 const Jimp = require("jimp");
 const service = require("../service/users");
+const { v4: uuidv4 } = require("uuid");
+const { sendMail } = require("../helpers/sendMail");
 
 const registerUser = async (req, res, next) => {
   const { email, password, subscription = "starter" } = req.body;
   const avatarURL = gravatar.url(email);
+  const verificationToken = uuidv4();
   const user = await service.findUserByEmail({ email });
   if (user) {
     res.status(409).json({ message: "Email in use" });
     return;
   }
-  await service.register({ email, password, avatarURL });
+  await service.register({ email, password, avatarURL, verificationToken });
+  await sendMail(email, verificationToken);
   res.status(201).json({
     user: {
       email,
@@ -27,6 +31,9 @@ const loginUser = async (req, res, next) => {
   const user = await service.findUserByEmail({ email });
   if (!user || !user.validPassword(password)) {
     res.status(401).json({ message: "Email or password is wrong" });
+  }
+  if (!user.verify) {
+    return res.status(401).json({ message: "Email is not verify" });
   }
 
   const token = await service.createToken(user);
@@ -95,6 +102,34 @@ const updateUserAvatar = async (req, res) => {
   }
 };
 
+const verifyEmail = async (req, res) => {
+  const { verificationToken } = req.params;
+  const user = await service.findUserByEmail({ verificationToken });
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  await service.verifyUser(user._id);
+  res.json({ message: "Verification successful" });
+};
+
+const confirmVerification = async (req, res) => {
+  const { email } = req.body;
+  const user = await service.findUserByEmail({ email });
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  if (user.verify) {
+    return res
+      .status(400)
+      .json({ message: "Verification has already been passed" });
+  }
+
+  sendMail(email, user.verificationToken);
+  res.json({ message: "Verification email sent" });
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -102,4 +137,6 @@ module.exports = {
   updateUser,
   logoutUser,
   updateUserAvatar,
+  verifyEmail,
+  confirmVerification,
 };
